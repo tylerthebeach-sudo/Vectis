@@ -2,6 +2,7 @@
 dist/
 build/
 *.spec
+!Vectis.spec
 
 # Logs and user data
 vectis.log
