@@ -1,0 +1,21 @@
+# PyInstaller output
+dist/
+build/
+*.spec
+
+# Logs and user data
+vectis.log
+*.log
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# VS Code
+.vscode/
+
+# Payroll / data files - never commit these
+*.xls
+*.xlsx
+*.xlsm
+*.csv

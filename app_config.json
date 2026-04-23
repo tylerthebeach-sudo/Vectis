@@ -1,0 +1,33 @@
+{
+  "timecard_code": "",
+  "timecard_desc": "",
+  "perend_date": "",
+  "payroll_anchor": "2026-01-02",
+  "dist_file_path": "C:/Users/tbeach/OneDrive - Eagle Builders/AI Folder/Workflow Mapping/Copy of Distribution From Dena Copy.xls",
+  "pay_code_mappings": [
+    {
+      "jobtime_code": "1 - Regular",
+      "earnded": "100",
+      "linenum": 1000,
+      "enabled": true
+    },
+    {
+      "jobtime_code": "2 - Overtime",
+      "earnded": "200",
+      "linenum": 2000,
+      "enabled": true
+    },
+    {
+      "jobtime_code": "4 - BC Overtime",
+      "earnded": "250",
+      "linenum": 2500,
+      "enabled": true
+    },
+    {
+      "jobtime_code": "3 - Drive Time",
+      "earnded": "DRIVE",
+      "linenum": 3000,
+      "enabled": true
+    }
+  ]
+}
