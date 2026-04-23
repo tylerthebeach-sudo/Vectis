@@ -1,9 +1,8 @@
 """
-Vectis v1.3
+Vectis v1.4
 Finance Time Entry Processor — JobTime Export → Sage 300 Timecard Import
 """
-import sys, os, threading, logging, json, zipfile, shutil, tempfile, subprocess
-import urllib.request, urllib.error
+import os, threading, logging
 from datetime import date, datetime, timedelta
 
 import customtkinter as ctk
@@ -41,8 +40,7 @@ ERR_RED  = "#FC8181"
 
 _OVERRIDE_PWD = "vectis1"   # password to force-export despite distribution errors
 
-VERSION = "1.3"
-_REPO   = "tylerthebeach-sudo/Vectis"
+VERSION = "1.4"
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -183,15 +181,6 @@ class CSVDaddyApp(ctk.CTk):
                      text_color=TEXT_WH).pack(side="left", padx=20, pady=10)
         ctk.CTkLabel(tb, text="JobTime → Sage 300 Timecard Processor",
                      font=("Segoe UI", 13), text_color=TEXT_DIM).pack(side="left", padx=5)
-        self.update_btn = ctk.CTkButton(
-            tb, text="↑ Check for Updates",
-            command=self._check_for_updates,
-            fg_color=ACCENT2, hover_color=ACCENT,
-            text_color=TEXT_WH, font=("Segoe UI", 11),
-            height=30, width=160, corner_radius=6,
-        )
-        self.update_btn.pack(side="right", padx=16, pady=15)
-
         # Body
         body = ctk.CTkFrame(self, fg_color=BG_DARK, corner_radius=0)
         body.pack(fill="both", expand=True)
@@ -1773,95 +1762,6 @@ class CSVDaddyApp(ctk.CTk):
                 pass
             self._anomaly_popup = None
             self.unbind("<Button-1>")
-
-    # ══════════════════════════════════════════════════════════════════════════
-    #  AUTO-UPDATE
-    # ══════════════════════════════════════════════════════════════════════════
-
-    def _check_for_updates(self):
-        self.update_btn.configure(state="disabled", text="Checking…")
-        threading.Thread(target=self._fetch_latest_release, daemon=True).start()
-
-    def _fetch_latest_release(self):
-        api = f"https://api.github.com/repos/{_REPO}/releases/latest"
-        try:
-            req = urllib.request.Request(api, headers={"User-Agent": "Vectis-updater"})
-            with urllib.request.urlopen(req, timeout=10) as r:
-                data = json.loads(r.read())
-        except Exception as e:
-            self.after(0, lambda err=e: self._update_finished(f"Could not reach GitHub: {err}"))
-            return
-
-        tag = data.get("tag_name", "").lstrip("v")
-        try:
-            latest  = tuple(int(x) for x in tag.split("."))
-            current = tuple(int(x) for x in VERSION.split("."))
-        except ValueError:
-            self.after(0, lambda: self._update_finished("Could not parse version number."))
-            return
-
-        if latest <= current:
-            self.after(0, lambda: self._update_finished(f"You're on the latest version (v{VERSION})."))
-            return
-
-        asset = next((a for a in data.get("assets", []) if a["name"].endswith(".zip")), None)
-        if not asset:
-            self.after(0, lambda: self._update_finished("Update found but no download asset available."))
-            return
-
-        url = asset["browser_download_url"]
-        self.after(0, lambda: self._offer_update(tag, url))
-
-    def _offer_update(self, tag: str, url: str):
-        self.update_btn.configure(state="normal", text="↑ Check for Updates")
-        if not messagebox.askyesno(
-            "Update Available",
-            f"Version {tag} is available  (you have v{VERSION}).\n\nDownload and install now?\n\nThe app will restart automatically.",
-        ):
-            return
-        self.update_status(f"Downloading v{tag}…", "warn")
-        self.update_btn.configure(state="disabled", text="Downloading…")
-        threading.Thread(target=self._download_and_install, args=(url, tag), daemon=True).start()
-
-    def _download_and_install(self, url: str, tag: str):
-        try:
-            tmp        = tempfile.mkdtemp(prefix="vectis_update_")
-            zip_path   = os.path.join(tmp, "update.zip")
-            extract_dir = os.path.join(tmp, "extracted")
-
-            urllib.request.urlretrieve(url, zip_path)
-
-            with zipfile.ZipFile(zip_path, "r") as z:
-                z.extractall(extract_dir)
-
-            if getattr(sys, "frozen", False):
-                install_dir = os.path.dirname(sys.executable)
-                bat_path = os.path.join(tmp, "do_update.bat")
-                with open(bat_path, "w") as f:
-                    f.write(
-                        f"@echo off\r\n"
-                        f"timeout /t 2 /nobreak >nul\r\n"
-                        f'robocopy "{extract_dir}" "{install_dir}" /E /IS /IT /IM >nul\r\n'
-                        f'start "" "{os.path.join(install_dir, "Vectis.exe")}"\r\n'
-                        f'del "%~f0"\r\n'
-                    )
-                subprocess.Popen(
-                    ["cmd", "/c", bat_path],
-                    creationflags=subprocess.CREATE_NO_WINDOW,
-                )
-                self.after(0, self.quit)
-            else:
-                import webbrowser
-                webbrowser.open(f"https://github.com/{_REPO}/releases/tag/v{tag}")
-                self.after(0, lambda: self._update_finished(
-                    f"Opened browser to v{tag} release page.\n(Running from source — install manually.)"
-                ))
-        except Exception as e:
-            self.after(0, lambda err=e: self._update_finished(f"Update failed: {err}"))
-
-    def _update_finished(self, msg: str):
-        self.update_btn.configure(state="normal", text="↑ Check for Updates")
-        messagebox.showinfo("Update", msg)
 
     # ══════════════════════════════════════════════════════════════════════════
     #  FIRST-RUN / MISSING DIST FILE PROMPT
