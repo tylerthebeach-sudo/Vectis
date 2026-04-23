@@ -1,5 +1,5 @@
 """
-Vectis v1.2
+Vectis v1.3
 Finance Time Entry Processor — JobTime Export → Sage 300 Timecard Import
 """
 import sys, os, threading, logging, json, zipfile, shutil, tempfile, subprocess
@@ -41,7 +41,7 @@ ERR_RED  = "#FC8181"
 
 _OVERRIDE_PWD = "vectis1"   # password to force-export despite distribution errors
 
-VERSION = "1.2"
+VERSION = "1.3"
 _REPO   = "tylerthebeach-sudo/Vectis"
 
 
@@ -168,6 +168,7 @@ class CSVDaddyApp(ctk.CTk):
         self.preview_search_var.trace_add("write", self._on_preview_search_change)
         self._load_config_into_ui()
         self.update_status("Ready. Select a JobTime file to begin.", "ok")
+        self.after(300, self._prompt_dist_file_if_missing)
 
     # ══════════════════════════════════════════════════════════════════════════
     #  UI CONSTRUCTION
@@ -1861,6 +1862,43 @@ class CSVDaddyApp(ctk.CTk):
     def _update_finished(self, msg: str):
         self.update_btn.configure(state="normal", text="↑ Check for Updates")
         messagebox.showinfo("Update", msg)
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #  FIRST-RUN / MISSING DIST FILE PROMPT
+    # ══════════════════════════════════════════════════════════════════════════
+
+    def _prompt_dist_file_if_missing(self):
+        dist_path = self.config_mgr.get("dist_file_path", "")
+        if dist_path and os.path.exists(dist_path):
+            return
+
+        if dist_path:
+            msg = (
+                f"The GL Distribution file could not be found:\n\n"
+                f"{dist_path}\n\n"
+                f"Please locate it now."
+            )
+        else:
+            msg = (
+                "A GL Distribution file is required to process timesheets.\n\n"
+                "Please locate the file now."
+            )
+
+        messagebox.showinfo("Distribution File Required", msg)
+
+        path = filedialog.askopenfilename(
+            title="Select GL Distribution File",
+            filetypes=[("Excel files", "*.xls *.xlsx *.xlsm"), ("All files", "*.*")],
+        )
+        if path:
+            self.config_mgr.set("dist_file_path", path)
+            self.config_mgr.save()
+            self.dist_label.configure(text=os.path.basename(path), text_color=TEXT_WH)
+            self._load_dist_map(path)
+        else:
+            self.update_status(
+                "No distribution file selected — export will be unavailable.", "warn"
+            )
 
     def update_status(self, text: str, level: str = "ok"):
         colors = {"ok": OK_GRN, "warn": WARN_YLW, "error": ERR_RED}
